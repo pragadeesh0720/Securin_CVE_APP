@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVD CVE Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .search-form input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .search-form button {
+            padding: 10px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .result-container {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-item h4 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .pagination-controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .pagination-controls button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .pagination-controls button:hover {
+            background-color: #0056b3;
+        }
+
+        .cve-list-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .cve-list-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .result-item pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CVE Search</h1>
+            <p>Enter a CVE ID to get detailed information or list all CVEs with pagination.</p>
+        </div>
+
+        <div class="search-form">
+            <input type="text" id="cve-id" placeholder="Enter CVE ID (e.g., CVE-2024-1234)">
+            <button onclick="searchCVE()">Search</button>
+        </div>
+
+        <button class="cve-list-btn" onclick="listCVEs()">List CVEs</button>
+
+        <div class="result-container" id="result-container"></div>
+
+        <div class="pagination-controls">
+            <button id="prev-btn" onclick="changePage(-1)">Previous</button>
+            <button id="next-btn" onclick="changePage(1)">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 0;
+
+        function searchCVE() {
+            const cveId = document.getElementById("cve-id").value.trim();
+            if (!cveId) {
+                alert("Please enter a CVE ID.");
+                return;
+            }
+
+            fetch(`/search/api/cve?cveId=${cveId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultContainer = document.getElementById("result-container");
+                    resultContainer.innerHTML = "";
+
+                    if (data.error) {
+                        resultContainer.innerHTML = `<p>Error: ${data.error}</p>`;
+                    } else {
+                        const cve = data;
+                        resultContainer.innerHTML = `
+                            <div class="result-item">
+                                <h4>CVE ID: ${cve.id}</h4>
+                                <p><strong>Status:</strong> ${cve.status}</p>
+                                <p><strong>Published:</strong> ${cve.published}</p>
+                                <p><strong>Last Modified:</strong> ${cve.lastModified}</p>
+                                <p><strong>Descriptions:</strong></p>
+                                <pre>${cve.descriptions}</pre>
+                                <p><strong>References:</strong></p>
+                                <pre>${cve.references}</pre>
+                                <p><strong>CVSS Metrics:</strong></p>
+                                <pre>${JSON.stringify(cve.cvssMetrics, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching CVE data:", error);
+                    alert("Error fetching CVE data.");
+                });
+        }
+
+        function listCVEs() {
+            fetch(`/list/api/cves?startIndex=${currentPage * 20}&resultsPerPage=20`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultContainer = document.getElementById("result-container");
+                    resultContainer.innerHTML = "";
+
+                    if (data.error) {
+                        resultContainer.innerHTML = `<p>Error: ${data.error}</p>`;
+                    } else {
+                        data.cves.forEach(cve => {
+                            resultContainer.innerHTML += `
+                                <div class="result-item">
+                                    <h4>CVE ID: ${cve.id}</h4>
+                                    <p><strong>Status:</strong> ${cve.status}</p>
+                                    <p><strong>Published:</strong> ${cve.published}</p>
+                                    <p><strong>Last Modified:</strong> ${cve.lastModified}</p>
+                                    <p><strong>Descriptions:</strong></p>
+                                    <pre>${cve.descriptions}</pre>
+                                    <p><strong>References:</strong></p>
+                                    <pre>${cve.references}</pre>
+                                </div>
+                            `;
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching CVEs:", error);
+                    alert("Error fetching CVEs.");
+                });
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            if (currentPage < 0) currentPage = 0;
+            listCVEs();
+        }
+    </script>
+</body>
+
+</html>
